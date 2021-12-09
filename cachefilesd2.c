@@ -10,41 +10,41 @@
 #include <poll.h>
 #include <stdint.h>
 
-#define CACHEFILES_MAX_PATH_LEN 32
+#define NAME_MAX         255	/* # chars in a file name */
 struct cachefiles_req_in {
         uint64_t id;
         uint64_t off;
         uint64_t len;
-        char path[CACHEFILES_MAX_PATH_LEN];
+        char path[NAME_MAX];
 };
 
-#define SRC_IMG_PATH "/root/test.img"
+#define SRC_IMG_PATH "/root/Dtest.img"
 
 int process_one_req(int fd)
 {
 	int ret;
 	struct cachefiles_req_in req_in;
 	int dst_fd, src_fd;
-	char dst_path[50];
+	char dst_path[NAME_MAX];
 	off64_t src_off, dst_off;
 	char cmd[32];
 	char *buffer;
 	size_t len;
 
 	ret = read(fd, &req_in, sizeof(req_in));
-	if (ret < 0) {
+	if (ret <= 0) {
 		printf("read /dev/cachefiles failed\n");
 		goto err;
 	}
 	printf("read %d, off %llu, len %llu, id %llu\n", ret, req_in.off, req_in.len, req_in.id);
-
+	
 	src_fd = open(SRC_IMG_PATH, O_RDWR);
 	if (src_fd < 0) {
 		printf("open src_fd %s failed\n", SRC_IMG_PATH);
 		goto err;
 	}
 
-	snprintf(dst_path, sizeof(dst_path), "/root/cache/erofs/%s", req_in.path);
+	snprintf(dst_path, sizeof(dst_path), "/root/cache/Ierofs/%s", req_in.path);
 
 	dst_fd = open(dst_path, O_RDWR);
 	if (dst_fd < 0) {
@@ -68,6 +68,16 @@ int process_one_req(int fd)
 	ret = write(dst_fd, buffer, len);
 	if (ret != len) {
 		printf("write dst image failed, ret %d, %d (%s)\n", ret, errno, strerror(errno));
+		goto err_buffer;
+	}
+
+	/*
+ 	 * Writeback data to disk since fscache access backing file through
+ 	 * DIRECT IO currently.
+ 	 */
+	ret = fsync(dst_fd);
+	if (ret < 0) {
+		printf("fdatasync failed\n");
 		goto err_buffer;
 	}
 
@@ -112,6 +122,22 @@ int main(void)
 		return -1;
 	}
 
+	cmd = "mode demand";
+	ret = write(fd, cmd, strlen(cmd));
+	if (ret < 0) {
+		printf("write mode failed, %d\n", errno);
+		close(fd);
+		return -1;
+	}
+
+	cmd = "tag test";
+	ret = write(fd, cmd, strlen(cmd));
+	if (ret < 0) {
+		printf("write tag failed, %d\n", errno);
+		close(fd);
+		return -1;
+	}
+
 	cmd = "bind";
 	ret = write(fd, cmd, strlen(cmd));
 	if (ret < 0) {
@@ -130,7 +156,7 @@ int main(void)
 			close(fd);
 			return -1;
 		}
-
+	
 		if (ret == 0 || !(pollfd.revents & POLLIN)) {
 			printf("poll returned %d (%x)\n", ret, pollfd.revents);
 			sleep(1);
