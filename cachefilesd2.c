@@ -20,15 +20,26 @@ struct cachefiles_req_in {
 
 #define SRC_IMG_PATH "/root/Dtest.img"
 
+static char *get_path_hash(char *path)
+{
+	if (!strcmp(path, "Dtest.img"))
+		return "@9c";
+	else if (!strcmp(path, "Dblob1.img"))
+		return "@b5";
+	else
+		return NULL;
+}
+
 int process_one_req(int fd)
 {
 	int ret;
 	struct cachefiles_req_in req_in;
 	int dst_fd, src_fd;
 	char dst_path[NAME_MAX];
+	char src_path[NAME_MAX];
 	off64_t src_off, dst_off;
 	char cmd[32];
-	char *buffer;
+	char *buffer, *hash;
 	size_t len;
 
 	ret = read(fd, &req_in, sizeof(req_in));
@@ -36,19 +47,26 @@ int process_one_req(int fd)
 		printf("read /dev/cachefiles failed\n");
 		goto err;
 	}
-	printf("read %d, off %llu, len %llu, id %llu\n", ret, req_in.off, req_in.len, req_in.id);
+	printf("[%llu %s] off %llu, len %llu\n", req_in.id, req_in.path, req_in.off, req_in.len);
 	
-	src_fd = open(SRC_IMG_PATH, O_RDWR);
-	if (src_fd < 0) {
-		printf("open src_fd %s failed\n", SRC_IMG_PATH);
+	hash = get_path_hash(req_in.path);
+	if (!hash) {
+		printf("backing file path parsing failed\n");
 		goto err;
 	}
 
-	snprintf(dst_path, sizeof(dst_path), "/root/cache/Ierofs/%s", req_in.path);
+	snprintf(src_path, sizeof(src_path), "/root/%s", req_in.path);
+	snprintf(dst_path, sizeof(dst_path), "/root/cache/Ierofs/%s/%s", hash, req_in.path);
+
+	src_fd = open(src_path, O_RDWR);
+	if (src_fd < 0) {
+		printf("open src_path %s failed\n", src_path);
+		goto err;
+	}
 
 	dst_fd = open(dst_path, O_RDWR);
 	if (dst_fd < 0) {
-		printf("open dst_fd %s failed\n", dst_path);
+		printf("open dst_path %s failed\n", dst_path);
 		goto err_srcfd;
 	}
 
@@ -59,13 +77,13 @@ int process_one_req(int fd)
 		goto err_dstfd;
 	}
 
-	ret = read(src_fd, buffer, len);
+	ret = pread(src_fd, buffer, len, req_in.off);
 	if (ret != len) {
 		printf("read src image failed, ret %d, %d (%s)\n", ret, errno, strerror(errno));
 		goto err_buffer;
 	}
 
-	ret = write(dst_fd, buffer, len);
+	ret = pwrite(dst_fd, buffer, len, req_in.off);
 	if (ret != len) {
 		printf("write dst image failed, ret %d, %d (%s)\n", ret, errno, strerror(errno));
 		goto err_buffer;
@@ -108,7 +126,7 @@ int main(void)
 	char *cmd;
 	struct pollfd pollfd;
 
-	fd = open("/dev/cachefiles", O_RDWR);
+	fd = open("/dev/cachefiles_demand", O_RDWR);
 	if (fd < 0) {
 		printf("open failed\n");
 		return -1;
