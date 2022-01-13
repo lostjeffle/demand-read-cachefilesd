@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
 	/* strip the prefix 'D' of the path */
 	fan = get_cookie_fan(name + 1);
 
-	printf("You should put this image at <cachefiles_root>/cache/Ierofs/@%2x/%s\n",
+	printf("You should put this image at cache/Ierofs/@%2x/%s\n",
 		fan, name);
 
 	return 0;

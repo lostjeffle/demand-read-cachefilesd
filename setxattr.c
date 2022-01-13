@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
 
 	ret = setxattr(path, "user.CacheFiles.cache", &xattr, sizeof(xattr), 0);
 	if (!ret)
-		printf("sccuess\n");
+		printf("success\n");
 
 	return 0;
 }
