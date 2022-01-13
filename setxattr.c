@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
 	unsigned long size;
 
 	if (argc != 3) {
-		printf("invalid argc\n");
+		printf("Using example: setxattr <img_path> <img_size>\n");
 		return -1;
 	}
 
