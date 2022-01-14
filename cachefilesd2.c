@@ -18,8 +18,7 @@ struct cachefiles_req_in {
         char path[NAME_MAX];
 };
 
-#define CACHEFILES_ROOT	"/root/"
-#define SRC_IMG_PATH "/root/"
+char *fscachedir;
 
 int process_one_req(int fd)
 {
@@ -45,8 +44,9 @@ int process_one_req(int fd)
 	/* strip the prefix 'D' of the path */
 	fan = get_cookie_fan(req_in.path + 1);
 
-	snprintf(src_path, sizeof(src_path), "%s/%s", SRC_IMG_PATH, req_in.path);
-	snprintf(dst_path, sizeof(dst_path), "%s/cache/Ierofs/@%2x/%s", CACHEFILES_ROOT, fan, req_in.path);
+	/* assume that source images are at the same directory with cachefilesd2 binary */
+	snprintf(src_path, sizeof(src_path), "%s", req_in.path);
+	snprintf(dst_path, sizeof(dst_path), "%s/cache/Ierofs/@%2x/%s", fscachedir, fan, req_in.path);
 
 	src_fd = open(src_path, O_RDWR);
 	if (src_fd < 0) {
@@ -100,12 +100,19 @@ err:
 
 
 
-int main(void)
+int main(int argc, char *argv[])
 {
 	int fd, ret;
 	char *cmd;
 	char cmdbuf[NAME_MAX];
 	struct pollfd pollfd;
+
+	if (argc != 2) {
+		printf("Using example: cachefilesd2 <fscachedir>\n");
+		return -1;
+	}
+
+	fscachedir = argv[1];
 
 	fd = open("/dev/cachefiles_ondemand", O_RDWR);
 	if (fd < 0) {
@@ -113,7 +120,7 @@ int main(void)
 		return -1;
 	}
 
-	snprintf(cmdbuf, sizeof(cmdbuf), "dir %s", CACHEFILES_ROOT);
+	snprintf(cmdbuf, sizeof(cmdbuf), "dir %s", fscachedir);
 	ret = write(fd, cmdbuf, strlen(cmdbuf));
 	if (ret < 0) {
 		printf("write dir failed, %d\n", errno);
