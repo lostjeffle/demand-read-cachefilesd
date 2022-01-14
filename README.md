@@ -1,3 +1,18 @@
+[Quick Test]
+============
+You could run run.sh to start a quick test. This test will build an
+erofs from @inputdir directory, start the cachefilesd2 daemon, and
+mount the built erofs at @mntdir.
+
+```
+./run.sh
+Example: ./run.sh inputdir mntdir fscachedir
+  inputdir: an erofs image will be built from this directory
+  mntdir: the built erofs will be mounted on this path
+  fscachedir: root directory of cachefiles
+```
+
+
 [Build]
 =======
 ```
@@ -9,6 +24,8 @@ gcc cachefilesd2.c hash.c -o cachefilesd2
 
 [Test]
 ======
+You could also setup the test step by step.
+
 1. create erofs image from directory <dir>
 (https://git.kernel.org/pub/scm/linux/kernel/git/xiang/erofs-utils.git)
 
