@@ -27,6 +27,13 @@ if [ ! -e setxattr -o ! -e getfan -o ! -e cachefilesd2 ]; then
 	exit
 fi
 
+mkfs.erofs 2>&1 | grep -q 'command not found'
+if [ $? -eq 0 ]; then
+	echo "erofs-utils need to be installed."
+	echo "https://git.kernel.org/pub/scm/linux/kernel/git/xiang/erofs-utils.git -b master"
+	exit
+fi
+
 # create erofs image, chunk-index layout, chunk size 1M
 mkfs.erofs --chunksize=1048576 --blobdev=$datablob -Eforce-chunk-indexes $bootstrap $inputdir
 
