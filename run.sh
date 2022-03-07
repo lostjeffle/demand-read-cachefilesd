@@ -18,11 +18,10 @@ _datablob="blob1.img"
 bootstrap="D${_bootstrap}"
 datablob="D${_datablob}"
 
-gcc setxattr.c -o setxattr
 gcc getfan.c hash.c -o getfan
-gcc cachefilesd2.c hash.c -o cachefilesd2
+gcc cachefilesd2.c -o cachefilesd2
 
-if [ ! -e setxattr -o ! -e getfan -o ! -e cachefilesd2 ]; then
+if [ ! -e getfan -o ! -e cachefilesd2 ]; then
 	echo "gcc failed"
 	exit
 fi
@@ -42,9 +41,6 @@ if [ ! -e $bootstrap -o ! -e $datablob ]; then
 	exit
 fi
 
-bootstrap_size=$(ls -l $bootstrap | awk '{print $5}')
-datablob_size=$(ls -l $datablob | awk '{print $5}')
-
 bootstrap_path=$(./getfan $bootstrap | awk '{print $NF}')
 bootstrap_path="$fscachedir/$bootstrap_path"
 
@@ -54,12 +50,12 @@ datablob_path="$fscachedir/$datablob_path"
 rm -f $bootstrap_path
 rm -f $datablob_path
 
-truncate -s $bootstrap_size $bootstrap_path
-truncate -s $datablob_size $datablob_path
-
-./setxattr $bootstrap_path $bootstrap_size
-./setxattr $datablob_path $datablob_size
-
 ./cachefilesd2 $fscachedir &
+
 sleep 2
 mount -t erofs none -o uuid=${_bootstrap} -o device=${_datablob} ${mntdir}
+
+trap "umount ${mntdir};pkill cachefilesd2; exit" INT
+
+echo "Ctrl-C to kill cachefilesd2 when test finished..."
+read tmp

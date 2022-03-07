@@ -10,101 +10,192 @@
 #include <poll.h>
 #include <stdint.h>
 
-#define NAME_MAX         255	/* # chars in a file name */
-struct cachefiles_req_in {
-        uint64_t id;
-        uint64_t off;
-        uint64_t len;
-        char path[NAME_MAX];
-};
+/* uapi for cahcefiles */
+#include "cachefiles.h"
+
+#define NAME_MAX 512
+struct fd_path_link {
+	int fd;
+	char path[NAME_MAX];
+} links[32];
+
+unsigned int link_num = 0;
 
 char *fscachedir;
 
-int process_one_req(int fd)
+/* 2MB buffer aligned with 512 (logical block size) for DIRECT IO  */
+#define BUF_SIZE (2*1024*1024)
+char buffer[BUF_SIZE] __attribute__((aligned(512)));
+
+static int get_file_size(char *path)
 {
-	int ret, retval = -1;
-	struct cachefiles_req_in req_in;
-	int dst_fd, src_fd;
-	char dst_path[NAME_MAX];
-	char src_path[NAME_MAX];
-	off64_t src_off, dst_off;
-	char cmd[32];
-	unsigned char fan;
-	char *buffer;
-	size_t len;
+	struct stat stats;
+	int ret;
 
-	ret = read(fd, &req_in, sizeof(req_in));
-	if (ret < 0)
-		printf("read /dev/cachefiles_ondemand failed\n");
-	if (ret <= 0)
-		goto err;
-
-	printf("[id %llu %s] off %llx, len %llx\n", req_in.id, req_in.path, req_in.off, req_in.len);
-	
-	/* strip the prefix 'D' of the path */
-	fan = get_cookie_fan(req_in.path + 1);
-
-	/* assume that source images are at the same directory with cachefilesd2 binary */
-	snprintf(src_path, sizeof(src_path), "%s", req_in.path);
-	snprintf(dst_path, sizeof(dst_path), "%s/cache/Ierofs/@%2x/%s", fscachedir, fan, req_in.path);
-
-	src_fd = open(src_path, O_RDWR);
-	if (src_fd < 0) {
-		printf("open src_path %s failed\n", src_path);
-		goto err;
+	ret = stat(path, &stats);
+	if (ret) {
+		printf("stat %s failed\n", path);
+		return -1;
 	}
 
-	dst_fd = open(dst_path, O_RDWR);
-	if (dst_fd < 0) {
-		printf("open dst_path %s failed\n", dst_path);
-		goto err_srcfd;
-	}
-
-	len = req_in.len;
-	buffer = malloc(len);
-	if (!buffer) {
-		printf("malloc failed\n");
-		goto err_dstfd;
-	}
-
-	ret = pread(src_fd, buffer, len, req_in.off);
-	if (ret != len) {
-		printf("read src image failed, ret %d, %d (%s)\n", ret, errno, strerror(errno));
-		goto err_buffer;
-	}
-
-	ret = pwrite(dst_fd, buffer, len, req_in.off);
-	if (ret != len) {
-		printf("write dst image failed, ret %d, %d (%s)\n", ret, errno, strerror(errno));
-		goto err_buffer;
-	}
-
-	snprintf(cmd, sizeof(cmd), "done %llu", req_in.id);
-	ret = write(fd, cmd, strlen(cmd));
-	if (ret < 0) {
-		printf("done failed\n");
-		goto err_buffer;
-	}
-
-	retval = 0;
-
-err_buffer:
-	free(buffer);
-err_dstfd:
-	close(dst_fd);
-err_srcfd:
-	close(src_fd);
-err:
-	return retval;
+	return stats.st_size;
 }
 
+static int process_init_req(int devfd, struct cachefiles_msg *msg)
+{
+	struct cachefiles_init *init;
+	struct fd_path_link *link;
+	char *volume_key, *cookie_key;
+	char cmd[32];
+	int ret, size;
 
+	init = (void *)msg->data;
+	volume_key = init->data;
+	cookie_key = init->data + init->volume_key_len;
+
+	printf("[INIT] volume key %s (volume_key_len %lu), cookie key %s (cookie_key_len %lu), fd %d, flags %u\n",
+		volume_key, init->volume_key_len, cookie_key, init->cookie_key_len, init->fd, init->flags);
+
+	if (init->flags & CACHEFILES_INIT_FL_WANT_CACHE_SIZE) {
+		size = get_file_size(cookie_key);
+		if (size < 0)
+			return -1;
+
+		snprintf(cmd, sizeof(cmd), "cinit %u,%lu", msg->id, size);
+	} else {
+		snprintf(cmd, sizeof(cmd), "cinit %u", msg->id);
+	}
+
+	printf("Writing cmd: %s\n", cmd);
+
+	ret = write(devfd, cmd, strlen(cmd));
+	if (ret < 0) {
+		printf("write [init] failed\n");
+		return -1;
+	}
+
+	if (link_num >= 32)
+		return -1;
+
+	link = links + link_num;
+	link_num ++;
+
+	link->fd = init->fd;
+	strncpy(link->path, cookie_key, NAME_MAX);
+
+	return 0;
+}
+
+static char *get_src_path(int fd)
+{
+	struct fd_path_link *link;
+	int i;
+
+	for (i = 0; i < link_num; i++) {
+		link = links + i;
+		if (link->fd == fd)
+			return link->path;
+	}
+
+	printf("failed get_src_path of %d\n", fd);
+	return NULL;
+}
+
+static int process_read_req(int devfd, struct cachefiles_msg *msg)
+{
+	struct cachefiles_read *read;
+	int ret, retval = -1;
+	int dst_fd, src_fd;
+	char *src_path;
+	char cmd[32];
+	size_t len;
+
+	read = (void *)msg->data;
+
+	src_path = get_src_path(read->fd);
+	if (!src_path)
+		return -1;
+
+	printf("[READ] fd %d, src_path %s, off %llx, len %llx\n", read->fd, src_path, read->off, read->len);
+
+	dst_fd = read->fd;
+	src_fd = open(src_path, O_RDONLY);
+	if (src_fd < 0) {
+		printf("open src_path %s failed\n", src_path);
+		return -1;
+	}
+
+	len = read->len;
+	if (BUF_SIZE < len) {
+		printf("buffer overflow\n");
+		close(src_fd);
+		return -1;
+	}
+
+	ret = pread(src_fd, buffer, len, read->off);
+	if (ret != len) {
+		printf("read src image failed, ret %d, %d (%s)\n", ret, errno, strerror(errno));
+		close(src_fd);
+		return -1;
+	}
+
+	ret = pwrite(dst_fd, buffer, len, read->off);
+	if (ret != len) {
+		printf("write dst image failed, ret %d, %d (%s)\n", ret, errno, strerror(errno));
+		close(src_fd);
+		return -1;
+	}
+
+	snprintf(cmd, sizeof(cmd), "cread %u", msg->id);
+	ret = write(devfd, cmd, strlen(cmd));
+	if (ret < 0) {
+		printf("send [read] cmd failed\n");
+		close(src_fd);
+		return -1;
+	}
+
+	return 0;
+}
+
+static int process_one_req(int devfd)
+{
+	char buf[CACHEFILES_MSG_MAX_SIZE];
+	int ret;
+	struct cachefiles_msg *msg;
+	size_t len;
+
+	memset(buf, 0, sizeof(buf));
+
+	ret = read(devfd, buf, sizeof(buf));
+	if (ret < 0)
+		printf("read devnode failed\n");
+	if (ret <= 0)
+		return -1;
+
+	msg = (void *)buf;
+	if (ret != msg->len) {
+		printf("invalid message length %d (readed %d)\n", msg->len, ret);
+		return -1;
+	}
+
+	printf("[HEADER] id %u, opcode %d\t", msg->id, msg->opcode);
+
+	switch (msg->opcode) {
+	case CACHEFILES_OP_INIT:
+		return process_init_req(devfd, msg);
+	case CACHEFILES_OP_READ:
+		return process_read_req(devfd, msg);
+	default:
+		printf("invalid opcode %d\n", msg->opcode);
+		return -1;
+	}
+}
 
 int main(int argc, char *argv[])
 {
 	int fd, ret;
 	char *cmd;
-	char cmdbuf[NAME_MAX];
+	char cmdbuf[128];
 	struct pollfd pollfd;
 
 	if (argc != 2) {
@@ -114,9 +205,9 @@ int main(int argc, char *argv[])
 
 	fscachedir = argv[1];
 
-	fd = open("/dev/cachefiles_ondemand", O_RDWR);
+	fd = open("/dev/cachefiles", O_RDWR);
 	if (fd < 0) {
-		printf("open failed\n");
+		printf("open /dev/cachefiles failed\n");
 		return -1;
 	}
 
@@ -136,7 +227,7 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	cmd = "bind";
+	cmd = "bind ondemand";
 	ret = write(fd, cmd, strlen(cmd));
 	if (ret < 0) {
 		printf("bind failed\n");
@@ -154,7 +245,7 @@ int main(int argc, char *argv[])
 			close(fd);
 			return -1;
 		}
-	
+
 		if (ret == 0 || !(pollfd.revents & POLLIN)) {
 			printf("poll returned %d (%x)\n", ret, pollfd.revents);
 			continue;
