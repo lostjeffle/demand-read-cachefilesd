@@ -41,22 +41,22 @@ static int get_file_size(char *path)
 	return stats.st_size;
 }
 
-static int process_init_req(int devfd, struct cachefiles_msg *msg)
+static int process_open_req(int devfd, struct cachefiles_msg *msg)
 {
-	struct cachefiles_init *init;
+	struct cachefiles_open *load;
 	struct fd_path_link *link;
 	char *volume_key, *cookie_key;
 	char cmd[32];
 	int ret, size;
 
-	init = (void *)msg->data;
-	volume_key = init->data;
-	cookie_key = init->data + init->volume_key_len;
+	load = (void *)msg->data;
+	volume_key = load->data;
+	cookie_key = load->data + load->volume_key_len;
 
-	printf("[INIT] volume key %s (volume_key_len %lu), cookie key %s (cookie_key_len %lu), fd %d, flags %u\n",
-		volume_key, init->volume_key_len, cookie_key, init->cookie_key_len, init->fd, init->flags);
+	printf("[OPEN] volume key %s (volume_key_len %lu), cookie key %s (cookie_key_len %lu), fd %d, flags %u\n",
+		volume_key, load->volume_key_len, cookie_key, load->cookie_key_len, load->fd, load->flags);
 
-	if (init->flags & CACHEFILES_INIT_FL_WANT_CACHE_SIZE) {
+	if (load->flags & (1 << CACHEFILES_OPEN_WANT_CACHE_SIZE)) {
 		size = get_file_size(cookie_key);
 		if (size < 0)
 			return -1;
@@ -80,9 +80,20 @@ static int process_init_req(int devfd, struct cachefiles_msg *msg)
 	link = links + link_num;
 	link_num ++;
 
-	link->fd = init->fd;
+	link->fd = load->fd;
 	strncpy(link->path, cookie_key, NAME_MAX);
 
+	return 0;
+}
+
+static int process_close_req(int devfd, struct cachefiles_msg *msg)
+{
+	struct cachefiles_close *load;
+
+	load = (void *)msg->data;
+
+	printf("[CLOSE] fd %d\n", load->fd);
+	close(load->fd);
 	return 0;
 }
 
@@ -181,8 +192,10 @@ static int process_one_req(int devfd)
 	printf("[HEADER] id %u, opcode %d\t", msg->id, msg->opcode);
 
 	switch (msg->opcode) {
-	case CACHEFILES_OP_INIT:
-		return process_init_req(devfd, msg);
+	case CACHEFILES_OP_OPEN:
+		return process_open_req(devfd, msg);
+	case CACHEFILES_OP_CLOSE:
+		return process_close_req(devfd, msg);
 	case CACHEFILES_OP_READ:
 		return process_read_req(devfd, msg);
 	default:

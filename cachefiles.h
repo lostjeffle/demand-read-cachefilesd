@@ -7,7 +7,8 @@
 #define CACHEFILES_MSG_MAX_SIZE	512
 
 enum cachefiles_opcode {
-	CACHEFILES_OP_INIT,
+	CACHEFILES_OP_OPEN,
+	CACHEFILES_OP_CLOSE,
 	CACHEFILES_OP_READ,
 };
 
@@ -24,7 +25,7 @@ struct cachefiles_msg {
 	__u8  data[];
 };
 
-struct cachefiles_init {
+struct cachefiles_open {
 	__u32 volume_key_len;
 	__u32 cookie_key_len;
 	__u32 fd;
@@ -33,11 +34,13 @@ struct cachefiles_init {
 	__u8  data[];
 };
 
-enum cachefiles_init_flags {
-	CACHEFILES_INIT_WANT_CACHE_SIZE,
+enum cachefiles_open_flags {
+	CACHEFILES_OPEN_WANT_CACHE_SIZE,
 };
 
-#define CACHEFILES_INIT_FL_WANT_CACHE_SIZE	(1 << CACHEFILES_INIT_WANT_CACHE_SIZE)
+struct cachefiles_close {
+	__u32 fd;
+};
 
 struct cachefiles_read {
 	__u64 off;
