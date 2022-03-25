@@ -118,8 +118,8 @@ static int process_read_req(int devfd, struct cachefiles_msg *msg)
 	int ret, retval = -1;
 	int dst_fd, src_fd;
 	char *src_path;
-	char cmd[32];
 	size_t len;
+	unsigned long id;
 
 	read = (void *)msg->data;
 
@@ -157,14 +157,15 @@ static int process_read_req(int devfd, struct cachefiles_msg *msg)
 		return -1;
 	}
 
-	snprintf(cmd, sizeof(cmd), "cread %u", msg->id);
-	ret = write(devfd, cmd, strlen(cmd));
+	id = msg->id;
+	ret = ioctl(dst_fd, CACHEFILES_IOC_CREAD, id);
 	if (ret < 0) {
-		printf("send [read] cmd failed\n");
+		printf("send cread failed, %d (%s)\n", errno, strerror(errno));
 		close(src_fd);
 		return -1;
 	}
 
+	close(src_fd);
 	return 0;
 }
 

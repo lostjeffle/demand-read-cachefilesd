@@ -34,9 +34,9 @@ if [ $? -eq 0 ]; then
 fi
 
 # create erofs image, chunk-index layout, chunk size 1M
-mkfs.erofs --chunksize=1048576 --blobdev=$datablob -Eforce-chunk-indexes $bootstrap $inputdir
+mkfs.erofs --chunksize=1048576 --blobdev=$_datablob -Eforce-chunk-indexes $_bootstrap $inputdir
 
-if [ ! -e $bootstrap -o ! -e $datablob ]; then
+if [ ! -e $_bootstrap -o ! -e $_datablob ]; then
 	echo "mkfs.erofs failed"
 	exit
 fi
@@ -53,7 +53,7 @@ rm -f $datablob_path
 ./cachefilesd2 $fscachedir &
 
 sleep 2
-mount -t erofs none -o uuid=${_bootstrap} -o device=${_datablob} ${mntdir}
+mount -t erofs none -o tag=${_bootstrap} -o device=${_datablob} ${mntdir}
 
 trap "umount ${mntdir};pkill cachefilesd2; exit" INT
 

@@ -3,8 +3,9 @@
 #define _LINUX_CACHEFILES_H
 
 #include <linux/types.h>
+#include <linux/ioctl.h>
 
-#define CACHEFILES_MSG_MAX_SIZE	512
+#define CACHEFILES_MSG_MAX_SIZE	1024
 
 enum cachefiles_opcode {
 	CACHEFILES_OP_OPEN,
@@ -47,5 +48,7 @@ struct cachefiles_read {
 	__u64 len;
 	__u32 fd;
 };
+
+#define CACHEFILES_IOC_CREAD    _IOW(0x98, 1, long)
 
 #endif
