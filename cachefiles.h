@@ -5,6 +5,10 @@
 #include <linux/types.h>
 #include <linux/ioctl.h>
 
+/*
+ * Fscache ensures that the maximum length of cookie key is 255. The volume key
+ * is controlled by netfs, and generally no bigger than 255.
+ */
 #define CACHEFILES_MSG_MAX_SIZE	1024
 
 enum cachefiles_opcode {
@@ -35,10 +39,6 @@ struct cachefiles_open {
 	__u8  data[];
 };
 
-enum cachefiles_open_flags {
-	CACHEFILES_OPEN_WANT_CACHE_SIZE,
-};
-
 struct cachefiles_close {
 	__u32 fd;
 };
@@ -49,6 +49,9 @@ struct cachefiles_read {
 	__u32 fd;
 };
 
-#define CACHEFILES_IOC_CREAD    _IOW(0x98, 1, long)
+/*
+ * For CACHEFILES_IOC_CREAD, arg is the @id field of corresponding READ request.
+ */
+#define CACHEFILES_IOC_CREAD	_IOW(0x98, 1, int)
 
 #endif

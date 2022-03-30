@@ -56,21 +56,17 @@ static int process_open_req(int devfd, struct cachefiles_msg *msg)
 	printf("[OPEN] volume key %s (volume_key_len %lu), cookie key %s (cookie_key_len %lu), fd %d, flags %u\n",
 		volume_key, load->volume_key_len, cookie_key, load->cookie_key_len, load->fd, load->flags);
 
-	if (load->flags & (1 << CACHEFILES_OPEN_WANT_CACHE_SIZE)) {
-		size = get_file_size(cookie_key);
-		if (size < 0)
-			return -1;
+	size = get_file_size(cookie_key);
+	if (size < 0)
+		return -1;
 
-		snprintf(cmd, sizeof(cmd), "cinit %u,%lu", msg->id, size);
-	} else {
-		snprintf(cmd, sizeof(cmd), "cinit %u", msg->id);
-	}
+	snprintf(cmd, sizeof(cmd), "copen %u,%lu", msg->id, size);
 
 	printf("Writing cmd: %s\n", cmd);
 
 	ret = write(devfd, cmd, strlen(cmd));
 	if (ret < 0) {
-		printf("write [init] failed\n");
+		printf("write [copen] failed\n");
 		return -1;
 	}
 
