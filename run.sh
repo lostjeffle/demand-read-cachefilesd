@@ -53,7 +53,7 @@ rm -f $datablob_path
 ./cachefilesd2 $fscachedir &
 
 sleep 2
-mount -t erofs none -o tag=${_bootstrap} -o device=${_datablob} ${mntdir}
+mount -t erofs none -o fsid=${_bootstrap} -o device=${_datablob} ${mntdir}
 
 trap "umount ${mntdir};pkill cachefilesd2; exit" INT
 
