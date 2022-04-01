@@ -19,7 +19,7 @@ bootstrap="D${_bootstrap}"
 datablob="D${_datablob}"
 
 gcc getfan.c hash.c -o getfan
-gcc cachefilesd2.c -o cachefilesd2
+gcc libcachefilesd.c cachefilesd2.c -o cachefilesd2
 
 if [ ! -e getfan -o ! -e cachefilesd2 ]; then
 	echo "gcc failed"
