@@ -84,7 +84,6 @@ unsigned int get_volume_hash(const char *volume_key)
 
 	key = malloc(hlen);
 	if (!key) {
-		printf("No memory\n");
 		return 0;
 	}
 
@@ -98,18 +97,18 @@ unsigned int get_volume_hash(const char *volume_key)
 	return hash;
 }
 
-unsigned int get_cookie_hash(const char *cookie_key)
+unsigned int get_cookie_hash(const char *volume_key, const char *cookie_key)
 {
 	int klen, hlen;
 	char *key;
 	unsigned int hash, volume_hash;
+	int ret;
 
 	klen = strlen(cookie_key);
 	hlen = round_up(klen, sizeof(uint32_t));
 
 	key = malloc(hlen);
 	if (!key) {
-		printf("No memory\n");
 		return 0;
 	}
 
@@ -117,16 +116,16 @@ unsigned int get_cookie_hash(const char *cookie_key)
 	memcpy(key, cookie_key, klen);
 
 	/* erofs kernel module registers volume with key "erofs" */
-	volume_hash = get_volume_hash("erofs");
+	volume_hash = get_volume_hash(volume_key);
 	hash = fscache_hash(volume_hash, key, hlen);
-	free(key);
 
+	free(key);
 	return hash;
 }
 
-unsigned char get_cookie_fan(const char *cookie_key)
+unsigned char get_cookie_fan(const char *volume_key, const char *cookie_key)
 {
 	/* cachefiles distributes all backing files over 256 fan directories */
-	return get_cookie_hash(cookie_key);
+	return get_cookie_hash(volume_key, cookie_key);
 
 }

@@ -41,11 +41,14 @@ if [ ! -e $_bootstrap -o ! -e $_datablob ]; then
 	exit
 fi
 
-bootstrap_path=$(./getfan $bootstrap | awk '{print $NF}')
-bootstrap_path="$fscachedir/$bootstrap_path"
+_volume="erofs,$_bootstrap"
+volume="I$_volume"
 
-datablob_path=$(./getfan $datablob | awk '{print $NF}')
-datablob_path="$fscachedir/$datablob_path"
+bootstrap_fan=$(./getfan $_volume $_bootstrap)
+bootstrap_path="$fscachedir/cache/$volume/@$bootstrap_fan/D$_bootstrap"
+
+datablob_fan=$(./getfan $_volume $_datablob)
+datablob_path="$fscachedir/cache/$volume/@$datablob_fan/D$_datablob"
 
 rm -f $bootstrap_path
 rm -f $datablob_path

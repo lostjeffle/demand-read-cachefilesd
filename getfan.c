@@ -12,21 +12,19 @@
 int main(int argc, char *argv[])
 {
 	int ret;
-	char *name;
+	char *volume, *img;
 	unsigned char fan;
 
-	if (argc != 2) {
-		printf("Using example: getfan <img_name>\n");
+	if (argc != 3) {
+		printf("Using example: getfan <volume> <img_name>\n");
 		return -1;
 	}
 
-	name = argv[1];
+	volume = argv[1];
+	img  = argv[2];
 
-	/* strip the prefix 'D' of the path */
-	fan = get_cookie_fan(name + 1);
-
-	printf("You should put this image at cache/Ierofs/@%2x/%s\n",
-		fan, name);
+	fan = get_cookie_fan(volume, img);
+	printf("%2x\n", fan);
 
 	return 0;
 }
