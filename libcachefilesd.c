@@ -65,6 +65,32 @@ int process_open_req(int devfd, struct cachefiles_msg *msg)
 	return 0;
 }
 
+/* error injection - return error directly */
+int process_open_req_fail(int devfd, struct cachefiles_msg *msg)
+{
+	struct cachefiles_open *load;
+	char *volume_key, *cookie_key;
+	char cmd[32];
+	int ret, size;
+
+	load = (void *)msg->data;
+	volume_key = load->data;
+	cookie_key = load->data + load->volume_key_len;
+
+	printf("[OPEN] volume key %s (volume_key_len %lu), cookie key %s (cookie_key_len %lu), fd %d, flags %u\n",
+		volume_key, load->volume_key_len, cookie_key, load->cookie_key_len, load->fd, load->flags);
+
+	snprintf(cmd, sizeof(cmd), "copen %u,-1", msg->id);
+	printf("Writing cmd: %s\n", cmd);
+
+	ret = write(devfd, cmd, strlen(cmd));
+	if (ret < 0) {
+		printf("write [copen] failed\n");
+		return -1;
+	}
+
+	return 0;
+}
 
 int process_close_req(int devfd, struct cachefiles_msg *msg)
 {
