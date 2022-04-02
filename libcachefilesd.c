@@ -103,6 +103,16 @@ int process_close_req(int devfd, struct cachefiles_msg *msg)
 	return 0;
 }
 
+/* error injection - don't close anon_fd */
+int process_close_req_fail(int devfd, struct cachefiles_msg *msg)
+{
+	struct cachefiles_close *load;
+
+	load = (void *)msg->data;
+
+	printf("[CLOSE] fd %d\n", load->fd);
+	return 0;
+}
 
 /* 2MB buffer aligned with 512 (logical block size) for DIRECT IO  */
 #define BUF_SIZE (2*1024*1024)
@@ -173,6 +183,31 @@ int process_read_req(int devfd, struct cachefiles_msg *msg)
 	}
 
 	close(src_fd);
+	return 0;
+}
+
+/* error injection - return error directly */
+int process_read_req_fail(int devfd, struct cachefiles_msg *msg)
+{
+	struct cachefiles_read *read;
+	struct fd_path_link *link;
+	int i, ret, retval = -1;
+	int dst_fd, src_fd;
+	char *src_path = NULL;
+	size_t len;
+	unsigned long id;
+
+	read = (void *)msg->data;
+	dst_fd = read->fd;
+	id = msg->id;
+
+	ret = ioctl(dst_fd, CACHEFILES_IOC_CREAD, id);
+	if (ret < 0) {
+		printf("send cread failed, %d (%s)\n", errno, strerror(errno));
+		close(src_fd);
+		return -1;
+	}
+
 	return 0;
 }
 
