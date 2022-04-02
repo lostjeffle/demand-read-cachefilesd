@@ -18,8 +18,7 @@ _datablob="blob1.img"
 bootstrap="D${_bootstrap}"
 datablob="D${_datablob}"
 
-gcc getfan.c hash.c -o getfan
-gcc libcachefilesd.c cachefilesd2.c -o cachefilesd2
+make
 
 if [ ! -e getfan -o ! -e cachefilesd2 ]; then
 	echo "gcc failed"
