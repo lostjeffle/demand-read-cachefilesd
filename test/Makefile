@@ -4,6 +4,7 @@ all: cachefilesd
 	gcc ../libcachefilesd.c test04-daemon.c -o test04-daemon
 	gcc ../libcachefilesd.c test05-daemon.c -o test05-daemon
 	gcc ../libcachefilesd.c test06-daemon.c -o test06-daemon
+	gcc ../libcachefilesd.c test08-daemon.c -o test08-daemon
 
 cachefilesd:
 	make -C ../
