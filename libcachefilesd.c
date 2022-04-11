@@ -17,6 +17,7 @@
 struct fd_path_link {
 	int object_id;
 	int fd;
+	int size;
 	char path[NAME_MAX];
 } links[32];
 
@@ -77,6 +78,7 @@ int process_open_req(int devfd, struct cachefiles_msg *msg)
 
 	link->object_id = load->object_id;
 	link->fd = load->fd;
+	link->size = size;
 	strncpy(link->path, cookie_key, NAME_MAX);
 
 	return 0;
@@ -143,7 +145,7 @@ int process_close_req_fail(int devfd, struct cachefiles_msg *msg)
 #define BUF_SIZE (2*1024*1024)
 static char readbuf[BUF_SIZE] __attribute__((aligned(512)));
 
-int process_read_req(int devfd, struct cachefiles_msg *msg)
+static int do_process_read_req(int devfd, struct cachefiles_msg *msg, int ra)
 {
 	struct cachefiles_read *read;
 	struct fd_path_link *link;
@@ -179,6 +181,9 @@ int process_read_req(int devfd, struct cachefiles_msg *msg)
 		return -1;
 	}
 
+	if (ra && read->off + BUF_SIZE <= link->size)
+		len = BUF_SIZE;
+
 	ret = pread(src_fd, readbuf, len, read->off);
 	if (ret != len) {
 		printf("read src image failed, ret %d, %d (%s)\n", ret, errno, strerror(errno));
@@ -203,6 +208,16 @@ int process_read_req(int devfd, struct cachefiles_msg *msg)
 
 	close(src_fd);
 	return 0;
+}
+
+int process_read_req(int devfd, struct cachefiles_msg *msg)
+{
+	return do_process_read_req(devfd, msg, 0);
+}
+
+int process_read_req_ra(int devfd, struct cachefiles_msg *msg)
+{
+	return do_process_read_req(devfd, msg, 1);
 }
 
 /* error injection - return error directly */
