@@ -21,7 +21,7 @@ static int process_open_req_local(int devfd, struct cachefiles_msg *msg)
 
 	load = (void *)msg->data;
 	volume_key = load->data;
-	cookie_key = load->data + load->volume_key_len;
+	cookie_key = load->data + load->volume_key_size;
 
 	ret = write(load->fd, cmd, sizeof(cmd));
 	if (ret < 0)

@@ -15,11 +15,25 @@
 
 #define NAME_MAX 512
 struct fd_path_link {
+	int object_id;
 	int fd;
 	char path[NAME_MAX];
 } links[32];
 
 unsigned int link_num = 0;
+
+static struct fd_path_link *find_fd_path_link(int object_id)
+{
+	struct fd_path_link *link;
+	int i;
+
+	for (i = 0; i < link_num; i++) {
+		link = links + i;
+		if (link->object_id == object_id)
+			return link;
+	}
+	return NULL;
+}
 
 int process_open_req(int devfd, struct cachefiles_msg *msg)
 {
@@ -32,10 +46,12 @@ int process_open_req(int devfd, struct cachefiles_msg *msg)
 
 	load = (void *)msg->data;
 	volume_key = load->data;
-	cookie_key = load->data + load->volume_key_len;
+	cookie_key = load->data + load->volume_key_size;
 
-	printf("[OPEN] volume key %s (volume_key_len %lu), cookie key %s (cookie_key_len %lu), fd %d, flags %u\n",
-		volume_key, load->volume_key_len, cookie_key, load->cookie_key_len, load->fd, load->flags);
+	printf("[OPEN] volume key %s (volume_key_size %lu), cookie key %s (cookie_key_size %lu), "
+	       "object id %d, fd %d, flags %u\n",
+		volume_key, load->volume_key_size, cookie_key, load->cookie_key_size,
+		load->object_id, load->fd, load->flags);
 
 	ret = stat(cookie_key, &stats);
 	if (ret) {
@@ -59,6 +75,7 @@ int process_open_req(int devfd, struct cachefiles_msg *msg)
 	link = links + link_num;
 	link_num ++;
 
+	link->object_id = load->object_id;
 	link->fd = load->fd;
 	strncpy(link->path, cookie_key, NAME_MAX);
 
@@ -75,10 +92,12 @@ int process_open_req_fail(int devfd, struct cachefiles_msg *msg)
 
 	load = (void *)msg->data;
 	volume_key = load->data;
-	cookie_key = load->data + load->volume_key_len;
+	cookie_key = load->data + load->volume_key_size;
 
-	printf("[OPEN] volume key %s (volume_key_len %lu), cookie key %s (cookie_key_len %lu), fd %d, flags %u\n",
-		volume_key, load->volume_key_len, cookie_key, load->cookie_key_len, load->fd, load->flags);
+	printf("[OPEN] volume key %s (volume_key_size %lu), cookie key %s (cookie_key_size %lu), "
+	       "object id %d, fd %d, flags %u\n",
+		volume_key, load->volume_key_size, cookie_key, load->cookie_key_size,
+		load->object_id, load->fd, load->flags);
 
 	snprintf(cmd, sizeof(cmd), "copen %u,-1", msg->id);
 	printf("Writing cmd: %s\n", cmd);
@@ -95,11 +114,17 @@ int process_open_req_fail(int devfd, struct cachefiles_msg *msg)
 int process_close_req(int devfd, struct cachefiles_msg *msg)
 {
 	struct cachefiles_close *load;
+	struct fd_path_link *link;
 
 	load = (void *)msg->data;
+	link = find_fd_path_link(load->object_id);
+	if (!link) {
+		printf("invalid object id %d\n", load->object_id);
+		return -1;
+	}
 
-	printf("[CLOSE] fd %d\n", load->fd);
-	close(load->fd);
+	printf("[CLOSE] object_id %d, fd %d\n", load->object_id, link->fd);
+	close(link->fd);
 	return 0;
 }
 
@@ -110,7 +135,7 @@ int process_close_req_fail(int devfd, struct cachefiles_msg *msg)
 
 	load = (void *)msg->data;
 
-	printf("[CLOSE] fd %d\n", load->fd);
+	printf("[CLOSE] object_id %d\n", load->object_id);
 	return 0;
 }
 
@@ -130,22 +155,16 @@ int process_read_req(int devfd, struct cachefiles_msg *msg)
 
 	read = (void *)msg->data;
 
-	/* get source path of this anon_fd */
-	dst_fd = read->fd;
-	for (i = 0; i < link_num; i++) {
-		link = links + i;
-		if (link->fd == dst_fd) {
-			src_path = link->path;
-			break;
-		}
-	}
-
-	if (!src_path) {
-		printf("failed get_src_path of %d\n", dst_fd);
+	link = find_fd_path_link(read->object_id);
+	if (!link) {
+		printf("invalid object id %d\n", read->object_id);
 		return -1;
 	}
+	src_path = link->path;
+	dst_fd = link->fd;
 
-	printf("[READ] fd %d, src_path %s, off %llx, len %llx\n", read->fd, src_path, read->off, read->len);
+	printf("[READ] object_id %d, fd %d, src_path %s, off %llx, len %llx\n",
+			read->object_id, dst_fd, src_path, read->off, read->len);
 
 	src_fd = open(src_path, O_RDONLY);
 	if (src_fd < 0) {
@@ -198,7 +217,13 @@ int process_read_req_fail(int devfd, struct cachefiles_msg *msg)
 	unsigned long id;
 
 	read = (void *)msg->data;
-	dst_fd = read->fd;
+
+	link = find_fd_path_link(read->object_id);
+	if (!link) {
+		printf("invalid object id %d\n", read->object_id);
+		return -1;
+	}
+	dst_fd = link->fd;
 	id = msg->id;
 
 	ret = ioctl(dst_fd, CACHEFILES_IOC_CREAD, id);
