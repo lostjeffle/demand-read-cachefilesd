@@ -52,7 +52,7 @@ int process_open_req(int devfd, struct cachefiles_msg *msg)
 	printf("[OPEN] volume key %s (volume_key_size %lu), cookie key %s (cookie_key_size %lu), "
 	       "object id %d, fd %d, flags %u\n",
 		volume_key, load->volume_key_size, cookie_key, load->cookie_key_size,
-		load->object_id, load->fd, load->flags);
+		msg->object_id, load->fd, load->flags);
 
 	ret = stat(cookie_key, &stats);
 	if (ret) {
@@ -61,7 +61,7 @@ int process_open_req(int devfd, struct cachefiles_msg *msg)
 	}
 	size = stats.st_size;
 
-	snprintf(cmd, sizeof(cmd), "copen %u,%lu", msg->id, size);
+	snprintf(cmd, sizeof(cmd), "copen %u,%lu", msg->msg_id, size);
 	printf("Writing cmd: %s\n", cmd);
 
 	ret = write(devfd, cmd, strlen(cmd));
@@ -76,7 +76,7 @@ int process_open_req(int devfd, struct cachefiles_msg *msg)
 	link = links + link_num;
 	link_num ++;
 
-	link->object_id = load->object_id;
+	link->object_id = msg->object_id;
 	link->fd = load->fd;
 	link->size = size;
 	strncpy(link->path, cookie_key, NAME_MAX);
@@ -99,9 +99,9 @@ int process_open_req_fail(int devfd, struct cachefiles_msg *msg)
 	printf("[OPEN] volume key %s (volume_key_size %lu), cookie key %s (cookie_key_size %lu), "
 	       "object id %d, fd %d, flags %u\n",
 		volume_key, load->volume_key_size, cookie_key, load->cookie_key_size,
-		load->object_id, load->fd, load->flags);
+		msg->object_id, load->fd, load->flags);
 
-	snprintf(cmd, sizeof(cmd), "copen %u,-1", msg->id);
+	snprintf(cmd, sizeof(cmd), "copen %u,-1", msg->msg_id);
 	printf("Writing cmd: %s\n", cmd);
 
 	ret = write(devfd, cmd, strlen(cmd));
@@ -115,17 +115,15 @@ int process_open_req_fail(int devfd, struct cachefiles_msg *msg)
 
 int process_close_req(int devfd, struct cachefiles_msg *msg)
 {
-	struct cachefiles_close *load;
 	struct fd_path_link *link;
 
-	load = (void *)msg->data;
-	link = find_fd_path_link(load->object_id);
+	link = find_fd_path_link(msg->object_id);
 	if (!link) {
-		printf("invalid object id %d\n", load->object_id);
+		printf("invalid object id %d\n", msg->object_id);
 		return -1;
 	}
 
-	printf("[CLOSE] object_id %d, fd %d\n", load->object_id, link->fd);
+	printf("[CLOSE] object_id %d, fd %d\n", msg->object_id, link->fd);
 	close(link->fd);
 	return 0;
 }
@@ -133,11 +131,7 @@ int process_close_req(int devfd, struct cachefiles_msg *msg)
 /* error injection - don't close anon_fd */
 int process_close_req_fail(int devfd, struct cachefiles_msg *msg)
 {
-	struct cachefiles_close *load;
-
-	load = (void *)msg->data;
-
-	printf("[CLOSE] object_id %d\n", load->object_id);
+	printf("[CLOSE] object_id %d\n", msg->object_id);
 	return 0;
 }
 
@@ -157,16 +151,16 @@ static int do_process_read_req(int devfd, struct cachefiles_msg *msg, int ra)
 
 	read = (void *)msg->data;
 
-	link = find_fd_path_link(read->object_id);
+	link = find_fd_path_link(msg->object_id);
 	if (!link) {
-		printf("invalid object id %d\n", read->object_id);
+		printf("invalid object id %d\n", msg->object_id);
 		return -1;
 	}
 	src_path = link->path;
 	dst_fd = link->fd;
 
 	printf("[READ] object_id %d, fd %d, src_path %s, off %llx, len %llx\n",
-			read->object_id, dst_fd, src_path, read->off, read->len);
+			msg->object_id, dst_fd, src_path, read->off, read->len);
 
 	src_fd = open(src_path, O_RDONLY);
 	if (src_fd < 0) {
@@ -198,7 +192,7 @@ static int do_process_read_req(int devfd, struct cachefiles_msg *msg, int ra)
 		return -1;
 	}
 
-	id = msg->id;
+	id = msg->msg_id;
 	ret = ioctl(dst_fd, CACHEFILES_IOC_CREAD, id);
 	if (ret < 0) {
 		printf("send cread failed, %d (%s)\n", errno, strerror(errno));
@@ -233,13 +227,13 @@ int process_read_req_fail(int devfd, struct cachefiles_msg *msg)
 
 	read = (void *)msg->data;
 
-	link = find_fd_path_link(read->object_id);
+	link = find_fd_path_link(msg->object_id);
 	if (!link) {
-		printf("invalid object id %d\n", read->object_id);
+		printf("invalid object id %d\n", msg->object_id);
 		return -1;
 	}
 	dst_fd = link->fd;
-	id = msg->id;
+	id = msg->msg_id;
 
 	ret = ioctl(dst_fd, CACHEFILES_IOC_CREAD, id);
 	if (ret < 0) {

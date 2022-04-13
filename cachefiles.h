@@ -20,22 +20,21 @@ enum cachefiles_opcode {
 /*
  * Message Header
  *
- * @id		a unique ID identifying this message
+ * @msg_id	a unique ID identifying this message
  * @opcode	message type, CACHEFILE_OP_*
  * @len		message length, including message header and following data
+ * @object_id	a unique ID identifying a cache file
  * @data	message type specific payload
  */
 struct cachefiles_msg {
-	__u32 id;
+	__u32 msg_id;
 	__u32 opcode;
 	__u32 len;
+	__u32 object_id;
 	__u8  data[];
 };
 
 /*
- * @object_id identifies a cache file referred by the following volume_key and
- * cookie_key.
- *
  * @data contains the volume_key followed directly by the cookie_key. volume_key
  * is a NUL-terminated string; @volume_key_size idicates the size of the volume
  * key in bytes. cookie_key is binary data, which is netfs specific;
@@ -44,25 +43,18 @@ struct cachefiles_msg {
  * @fd identifies an anon_fd referring to the cache file.
  */
 struct cachefiles_open {
-	__u32 object_id;
-	__u32 fd;
 	__u32 volume_key_size;
 	__u32 cookie_key_size;
+	__u32 fd;
 	__u32 flags;
 	__u8  data[];
 };
 
-/* @object_id identifies a cache file operated on */
-struct cachefiles_close {
-	__u32 object_id;
-};
-
-/* @object_id	identifies a cache file operated on
+/*
  * @off		indicates the starting offset of the requested file range
  * @len		indicates the length of the requested file range
  */
 struct cachefiles_read {
-	__u32 object_id;
 	__u64 off;
 	__u64 len;
 };

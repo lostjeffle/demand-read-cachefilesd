@@ -27,7 +27,7 @@ static int process_open_req_local(int devfd, struct cachefiles_msg *msg)
 	if (ret < 0)
 		printf("write anon_fd, gets %d (%s)\n", errno, strerror(errno));
 
-	snprintf(cmd, sizeof(cmd), "copen %u,-1", msg->id);
+	snprintf(cmd, sizeof(cmd), "copen %u,-1", msg->msg_id);
 	ret = write(devfd, cmd, strlen(cmd));
 	if (ret < 0) {
 		printf("write [copen] failed\n");
@@ -57,7 +57,7 @@ static int process_one_req(int devfd)
 		return -1;
 	}
 
-	printf("[HEADER] id %u, opcode %d\t", msg->id, msg->opcode);
+	printf("[HEADER] id %u, opcode %d\t", msg->msg_id, msg->opcode);
 
 	switch (msg->opcode) {
 	case CACHEFILES_OP_OPEN:

@@ -31,7 +31,7 @@ static int process_one_req(int devfd)
 		return -1;
 	}
 
-	printf("[HEADER] id %u, opcode %d\t", msg->id, msg->opcode);
+	printf("[HEADER] id %u, opcode %d\t", msg->msg_id, msg->opcode);
 
 	switch (msg->opcode) {
 	case CACHEFILES_OP_OPEN:
