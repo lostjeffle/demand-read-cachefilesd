@@ -24,6 +24,24 @@ datablob_path="$fscachedir/cache/$volume/@$datablob_fan/D$_datablob"
 rm -f $bootstrap_path
 rm -f $datablob_path
 
+# prepare erofs images containing the linux kernel source
+if [[ ! -e img/$_bootstrap || ! -e img/$_datablob ]]; then
+	wget "http://jingbo-sh.oss-cn-shanghai.aliyuncs.com/linux-imgs.tgz?OSSAccessKeyId=LTAI5tARuXnWJ1YPFqsnaRSW&Expires=1965887251&Signature=baRS%2FZWj54pBlUtH7%2F5R1nJ2DTg%3D" -O img/linux-imgs.tgz
+	if [ $? -ne 0 ]; then
+		echo "linux images doesn't exist and failed to download"
+		exit
+	fi
+
+	pushd img/ > /dev/null
+	tar -xf linux-imgs.tgz
+	popd > /dev/null
+
+	if [[ ! -e img/$_bootstrap || ! -e img/$_datablob ]]; then
+		echo "linux images doesn't exist"
+		exit
+	fi
+fi
+
 cp img/$_bootstrap .
 cp img/$_datablob .
 
@@ -41,6 +59,7 @@ if [ $? -ne 0 ]; then
 	exit
 fi
 
+modprobe overlayfs
 mount -t overlay -o lowerdir=/mnt/lower,upperdir=/mnt/upper,workdir=/mnt/work none /mnt/test
 if [ $? -ne 0 ]; then
 	echo "mount overlay failed"
@@ -65,7 +84,7 @@ if [ $? -ne 0 ]; then
 fi
 
 
-echo "pass"
+echo "[pass]"
 
 #cleanup
 cd ~
