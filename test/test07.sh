@@ -38,7 +38,7 @@ if [ $? -eq 0 ]; then
 	exit
 fi
 
-echo "$log" | grep -q "No data available"
+echo "$log" | grep -q "can't read superblock"
 if [ $? -ne 0 ]; then
 	echo "mount failed not as expected ($log)"
 	pkill test05-daemon
