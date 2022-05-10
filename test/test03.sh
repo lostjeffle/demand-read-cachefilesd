@@ -6,7 +6,7 @@
 # The previous implementation uses a global fscache_volume for all erofs
 # filesystems. When old user daemon exits, and a new user daemon (with
 # a different tag) starts, the fscache_volume will exist there, still
-# bound to the cache  created by the old user daemon. Later when a new
+# bound to the cache created by the old user daemon. Later when a new
 # erofs filesystem is mounted, it will be bound to the global
 # fscache_volume. However since the fscache_volume is bound to a DEAD
 # cache (since the old user daemon has exited), fscache_begin_operation()
@@ -36,9 +36,7 @@ bootstrap_fan=$(../getfan $_volume $_bootstrap)
 bootstrap_path="$fscachedir/cache/$volume/@$bootstrap_fan/D$_bootstrap"
 
 
-# make cache file ready under root cache directory
 rm -f $bootstrap_path
-cp -a --preserve=xattr img/noinline/test.img $bootstrap_path
 cp img/noinline/test.img ../
 cp img/noinline/test.img .
 

@@ -14,7 +14,6 @@
 # Kernel commit "cachefiles: unmark inode in use in error path" shall
 # fix this.
 
-
 fscachedir="/root"
 _bootstrap="test.img"
 
@@ -33,11 +32,27 @@ bootstrap_path="$fscachedir/cache/$volume/@$bootstrap_fan/D$_bootstrap"
 
 # make cache file ready under root cache directory
 rm -f $bootstrap_path
-cp -a --preserve=xattr img/noinline/test.img $bootstrap_path
 cp img/noinline/test.img ../
 
+cd ..
+bash -c "./cachefilesd2 $fscachedir > /dev/null &"
+cd test
+sleep 1
+
+mount -t erofs none -o fsid=test.img /mnt/ 2>&1
+if [ $? -ne 0 ]; then
+	echo "setup image: mount failed"
+	pkill cachefilesd2
+	exit
+fi
+
+umount /mnt
+pkill cachefilesd2
+sleep 1
+
+# fail OPEN request
 bash -c "./test02-daemon $fscachedir > /dev/null  &"
-sleep 2
+sleep 1
 
 log=$(mount -t erofs none -o fsid=test.img /mnt/ 2>&1)
 if [ $? -eq 0 ]; then
@@ -62,9 +77,15 @@ cd ../
 sleep 2
 cd test
 
-mount -t erofs none -o fsid=test.img /mnt/
+log=$(mount -t erofs none -o fsid=test.img /mnt/ 2>&1)
 if [ $? -ne 0 ]; then
-	echo "mount failed"
+	echo "$log" | grep -q "No buffer space available"
+	if [ $? -eq 0 ]; then
+		echo "Object is not unmarked INUSE"
+		echo "'cachefiles: unmark inode in use in error path' should fix this"
+	else
+		echo "mount failed"
+	fi
 	pkill cachefilesd2
 	exit
 fi

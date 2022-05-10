@@ -32,7 +32,6 @@ sleep 2
 
 
 # test noinline data layout
-cp -a --preserve=xattr img/noinline/test.img $bootstrap_path
 cp img/noinline/test.img ../
 
 mount -t erofs none -o fsid=test.img /mnt/
@@ -62,7 +61,6 @@ echo "[noinline] pass"
 
 
 # test inline data layout
-cp -a --preserve=xattr img/inline/test.img $bootstrap_path
 cp img/inline/test.img ../
 
 mount -t erofs none -o fsid=test.img /mnt/
@@ -93,10 +91,6 @@ echo "[inline] pass"
 # test multidev data layout
 rm -f $bootstrap_path
 rm -f $datablob_path
-cp -a --preserve=xattr img/multidev/test.img $bootstrap_path
-cp -a --preserve=xattr img/multidev/blob1.img $datablob_path
-cp -a --preserve=xattr /root/img/multidev/Dtest.img $bootstrap_path
-cp -a --preserve=xattr /root/img/multidev/Dblob1.img $datablob_path
 cp img/multidev/test.img ../
 cp img/multidev/blob1.img ../
 

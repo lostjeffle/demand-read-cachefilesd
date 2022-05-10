@@ -21,9 +21,7 @@ bootstrap_fan=$(../getfan $_volume $_bootstrap)
 bootstrap_path="$fscachedir/cache/$volume/@$bootstrap_fan/D$_bootstrap"
 
 
-# make cache file ready under root cache directory
 rm -f $bootstrap_path
-cp -a --preserve=xattr img/noinline/test.img $bootstrap_path
 cp img/noinline/test.img ../
 cp img/noinline/test.img .
 
