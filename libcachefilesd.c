@@ -43,7 +43,8 @@ int process_open_req(int devfd, struct cachefiles_msg *msg)
 	char *volume_key, *cookie_key;
 	struct stat stats;
 	char cmd[32];
-	int ret, size;
+	int ret;
+	unsigned long long size;
 
 	load = (void *)msg->data;
 	volume_key = load->data;
@@ -61,7 +62,7 @@ int process_open_req(int devfd, struct cachefiles_msg *msg)
 	}
 	size = stats.st_size;
 
-	snprintf(cmd, sizeof(cmd), "copen %u,%lu", msg->msg_id, size);
+	snprintf(cmd, sizeof(cmd), "copen %u,%llu", msg->msg_id, size);
 	printf("Writing cmd: %s\n", cmd);
 
 	ret = write(devfd, cmd, strlen(cmd));
