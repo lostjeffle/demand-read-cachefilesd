@@ -15,7 +15,6 @@
 # fix this.
 
 fscachedir="/root"
-_bootstrap="test.img"
 
 make > /dev/null 2>&1
 if [ $? -ne 0 ]; then
@@ -23,15 +22,8 @@ if [ $? -ne 0 ]; then
 	exit
 fi
 
-_volume="erofs,$_bootstrap"
-volume="I$_volume"
-
-bootstrap_fan=$(../getfan $_volume $_bootstrap)
-bootstrap_path="$fscachedir/cache/$volume/@$bootstrap_fan/D$_bootstrap"
-
-
 # make cache file ready under root cache directory
-rm -f $bootstrap_path
+rm -rf "$fscachedir/cache/"
 cp img/noinline/test.img ../
 
 cd ..
@@ -54,17 +46,10 @@ sleep 1
 bash -c "./test02-daemon $fscachedir > /dev/null  &"
 sleep 1
 
-log=$(mount -t erofs none -o fsid=test.img /mnt/ 2>&1)
+mount -t erofs none -o fsid=test.img /mnt/ > /dev/null 2>&1
 if [ $? -eq 0 ]; then
 	echo "mount shall not succeed"
 	umont /mnt
-	pkill test02-daemon
-	exit
-fi
-
-echo "$log" | grep -q "No buffer space available"
-if [ $? -ne 0 ]; then
-	echo "mount failed not as expected ($log)"
 	pkill test02-daemon
 	exit
 fi
@@ -77,15 +62,10 @@ cd ../
 sleep 2
 cd test
 
-log=$(mount -t erofs none -o fsid=test.img /mnt/ 2>&1)
+mount -t erofs none -o fsid=test.img /mnt/ 2>&1
 if [ $? -ne 0 ]; then
-	echo "$log" | grep -q "No buffer space available"
-	if [ $? -eq 0 ]; then
-		echo "Object is not unmarked INUSE"
-		echo "'cachefiles: unmark inode in use in error path' should fix this"
-	else
-		echo "mount failed"
-	fi
+	echo "Object is not unmarked INUSE"
+	echo "'cachefiles: unmark inode in use in error path' should fix this"
 	pkill cachefilesd2
 	exit
 fi
