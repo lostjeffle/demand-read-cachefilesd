@@ -15,13 +15,9 @@ if [ $? -ne 0 ]; then
 	exit
 fi
 
-_volume="erofs,$_bootstrap"
-volume="I$_volume"
-
-
 # devices are initiated from device table when '-o device='
 # mount option is not specified
-rm -rf "$fscachedir/cache/$volume"
+rm -rf "$fscachedir/cache/"
 cp -f img/device/*.img ..
 
 cd ..
@@ -49,7 +45,7 @@ sleep 1
 
 # the tag inside device table shall not be empty if devices
 # are initiated from device table
-rm -rf "$fscachedir/cache/$volume"
+rm -rf "$fscachedir/cache/"
 cp -f img/device/device-bootstrap-invalid.img ../device-bootstrap.img
 
 cd ..
