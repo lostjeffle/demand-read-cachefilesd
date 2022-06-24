@@ -12,17 +12,7 @@ if [ $? -ne 0 ]; then
 	exit
 fi
 
-_volume="erofs,$_bootstrap"
-volume="I$_volume"
-
-bootstrap_fan=$(../getfan $_volume $_bootstrap)
-bootstrap_path="$fscachedir/cache/$volume/@$bootstrap_fan/D$_bootstrap"
-
-datablob_fan=$(../getfan $_volume $_datablob)
-datablob_path="$fscachedir/cache/$volume/@$datablob_fan/D$_datablob"
-
-rm -f $bootstrap_path
-rm -f $datablob_path
+rm -rf "$fscachedir/cache/"
 
 # prepare erofs images containing the linux kernel source
 if [[ ! -e img/$_bootstrap || ! -e img/$_datablob ]]; then
