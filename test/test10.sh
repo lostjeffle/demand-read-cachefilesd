@@ -2,6 +2,9 @@
 #
 # Test llseek.
 
+# since 4.19 doesn't support llseek yet
+echo "[skip]"
+exit
 
 fscachedir="/root"
 _bootstrap="test.img"
