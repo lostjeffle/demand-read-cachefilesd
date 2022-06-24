@@ -9,7 +9,6 @@
 # program will be awaken then.
 
 fscachedir="/root"
-_bootstrap="test.img"
 
 make > /dev/null 2>&1
 if [ $? -ne 0 ]; then
@@ -17,15 +16,8 @@ if [ $? -ne 0 ]; then
 	exit
 fi
 
-_volume="erofs,$_bootstrap"
-volume="I$_volume"
-
-bootstrap_fan=$(../getfan $_volume $_bootstrap)
-bootstrap_path="$fscachedir/cache/$volume/@$bootstrap_fan/D$_bootstrap"
-
-
 # make cache file ready under root cache directory
-rm -f $bootstrap_path
+rm -rf "$fscachedir/cache/"
 cp -f img/noinline/test.img .
 
 (./test12-daemon $fscachedir 2>&1 > /dev/null &)
