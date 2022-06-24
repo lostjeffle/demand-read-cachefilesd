@@ -6,7 +6,6 @@
 
 
 fscachedir="/root"
-_bootstrap="test.img"
 
 make > /dev/null 2>&1
 if [ $? -ne 0 ]; then
@@ -14,18 +13,13 @@ if [ $? -ne 0 ]; then
 	exit
 fi
 
-_volume="erofs,$_bootstrap"
-volume="I$_volume"
-
-bootstrap_fan=$(../getfan $_volume $_bootstrap)
-bootstrap_path="$fscachedir/cache/$volume/@$bootstrap_fan/D$_bootstrap"
-
+rm -rf "$fscachedir/cache/"
 cp img/noinline/test.img ../
 cp img/noinline/test.img .
 
 for i in {0..7}; do
 	# 1. error injection
-	rm -f $bootstrap_path
+	rm -rf "$fscachedir/cache/"
 	bash -c "./test05-daemon $fscachedir $i > /dev/null &"
 	sleep 1
 
@@ -39,7 +33,7 @@ for i in {0..7}; do
 	sleep 1
 
 	# 2. test cachefilesd2
-	rm -f $bootstrap_path
+	rm -rf "$fscachedir/cache/"
 	cd ../
 	bash -c "./cachefilesd2 $fscachedir > /dev/null &"
 	sleep 1
