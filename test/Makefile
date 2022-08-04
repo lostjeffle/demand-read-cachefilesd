@@ -10,6 +10,7 @@ all: cachefilesd
 	gcc ../libcachefilesd.c test11-daemon.c -o test11-daemon
 	gcc ../libcachefilesd.c test12-daemon.c -o test12-daemon
 	gcc ../libcachefilesd.c test13-daemon.c -o test13-daemon
+	gcc ../libcachefilesd.c test18-daemon.c -o test18-daemon
 
 cachefilesd:
 	make -C ../
