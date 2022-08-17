@@ -69,6 +69,8 @@ if [ $? -ne 0 ]; then
 fi
 
 source /opt/rh/devtoolset-9/enable
+yum install -y flex bison elfutils-libelf-devel openssl-devel > /dev/null
+
 cd /mnt/test
 cp -f arch/x86/configs/x86_64_defconfig .config
 make olddefconfig > /dev/null
