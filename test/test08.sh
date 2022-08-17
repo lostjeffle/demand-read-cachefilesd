@@ -59,7 +59,7 @@ if [ $? -ne 0 ]; then
 	exit
 fi
 
-modprobe overlayfs
+modprobe overlay
 mount -t overlay -o lowerdir=/mnt/lower,upperdir=/mnt/upper,workdir=/mnt/work none /mnt/test
 if [ $? -ne 0 ]; then
 	echo "mount overlay failed"
