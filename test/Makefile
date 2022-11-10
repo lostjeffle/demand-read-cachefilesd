@@ -1,4 +1,5 @@
 all: cachefilesd
+	gcc stress.c -o stress
 	gcc ../libcachefilesd.c test02-daemon.c -o test02-daemon
 	gcc ../libcachefilesd.c test03-daemon.c -o test03-daemon
 	gcc ../libcachefilesd.c test04-daemon.c -o test04-daemon
