@@ -12,17 +12,7 @@ if [ $? -ne 0 ]; then
 	exit
 fi
 
-_volume="erofs,$_bootstrap"
-volume="I$_volume"
-
-bootstrap_fan=$(../getfan $_volume $_bootstrap)
-bootstrap_path="$fscachedir/cache/$volume/@$bootstrap_fan/D$_bootstrap"
-
-datablob_fan=$(../getfan $_volume $_datablob)
-datablob_path="$fscachedir/cache/$volume/@$datablob_fan/D$_datablob"
-
-rm -f $bootstrap_path
-rm -f $datablob_path
+rm -rf $fscachedir/cache
 
 cd ..
 ./cachefilesd2 $fscachedir > /dev/null  &
@@ -32,9 +22,9 @@ sleep 2
 
 
 # test noinline data layout
-cp img/noinline/test.img ../
+cp img/noinline/test.img ../noinline-test.img
 
-mount -t erofs none -o fsid=test.img /mnt/
+mount -t erofs none -o fsid=noinline-test.img /mnt/
 if [ $? -ne 0 ]; then
 	echo "[noinline] mount failed"
 	pkill cachefilesd2
@@ -61,9 +51,9 @@ echo "[noinline] pass"
 
 
 # test inline data layout
-cp img/inline/test.img ../
+cp img/inline/test.img ../inline-test.img
 
-mount -t erofs none -o fsid=test.img /mnt/
+mount -t erofs none -o fsid=inline-test.img /mnt/
 if [ $? -ne 0 ]; then
 	echo "[inline] mount failed"
 	pkill cachefilesd2
@@ -89,8 +79,6 @@ umount /mnt
 echo "[inline] pass"
 
 # test multidev data layout
-rm -f $bootstrap_path
-rm -f $datablob_path
 cp img/multidev/test.img ../
 cp img/multidev/blob1.img ../
 
