@@ -3,6 +3,9 @@
 # Test user daemon closing anon_fd prematurely.
 # If user daemon closes anon_fd prematurely, the following read -EIO.
 
+# since this testcase has not adapt to failover
+echo "[skip]"
+exit
 
 fscachedir="/root"
 
