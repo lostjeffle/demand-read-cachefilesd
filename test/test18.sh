@@ -5,8 +5,8 @@
 # Test if user daemon could recover in-flight requests.
 
 # skip the test since failover has not been merged to upstream yet
-echo "[skip]"
-exit
+#echo "[skip]"
+#exit
 
 function kill_child() {
 	for i in {1..50}
